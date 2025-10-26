@@ -158,7 +158,7 @@ export default function PickleballRegistration() {
     
     try {
       // Get API URL from environment or use localhost
-      const API_URL = window.VITE_API_URL || 'http://localhost:3000/api';
+      const API_URL = window.VITE_API_URL || 'https://pickleball-backend-wigs.onrender.com';
       
       const orderResponse = await fetch(`${API_URL}/register`, {
         method: 'POST',
