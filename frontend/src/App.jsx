@@ -31,6 +31,7 @@ export default function PickleballRegistration() {
   const [success, setSuccess] = useState(false);
   const [paymentRef, setPaymentRef] = useState('');
 
+  // Recalculate total on selection changes
   useEffect(() => {
     let sum = 0;
     formData.selectedEvents.forEach(event => {
@@ -69,14 +70,14 @@ export default function PickleballRegistration() {
         selectedEvents: [...prev.selectedEvents, eventKey]
       }));
     }
-    
-    // Force recalculate total
+
+    // Force recalc immediately using the would-be state
     setTimeout(() => {
       let sum = 0;
-      const updatedEvents = isSelected 
+      const updatedEvents = isSelected
         ? formData.selectedEvents.filter(e => e !== eventKey)
         : [...formData.selectedEvents, eventKey];
-      
+
       updatedEvents.forEach(event => {
         const parts = event.split('_');
         const eventTypeFromKey = parts[parts.length - 1];
@@ -100,9 +101,7 @@ export default function PickleballRegistration() {
     }));
   };
 
-  const needsPartner = (eventType) => {
-    return eventType === 'Doubles' || eventType === 'Mixed';
-  };
+  const needsPartner = (eventType) => eventType === 'Doubles' || eventType === 'Mixed';
 
   const validateStep1 = () => {
     const { name, email, phone, address } = formData;
@@ -146,45 +145,52 @@ export default function PickleballRegistration() {
   };
 
   const handleNext = () => {
-    if (step === 1 && validateStep1()) {
-      setStep(2);
-    }
+    if (step === 1 && validateStep1()) setStep(2);
   };
 
   const handleSubmit = async () => {
     if (!validateStep2()) return;
 
     setLoading(true);
-    
+
     try {
-      // Get API URL from environment or use localhost
-      const API_URL = window.VITE_API_URL || 'https://pickleball-backend-wigs.onrender.com';
-      
-      const orderResponse = await fetch(`${API_URL}/register`, {
+      // Use Vite env on Vercel, fall back to your Render URL in dev
+      const API_BASE = (import.meta.env.VITE_API_BASE || 'https://pickleball-backend-wigs.onrender.com').replace(/\/+$/, '');
+
+      // 1) Create order
+      const orderResponse = await fetch(`${API_BASE}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
-      const orderData = await orderResponse.json();
+      if (!orderResponse.ok) {
+        const errText = await orderResponse.text().catch(() => '');
+        throw new Error(errText || `Register failed (${orderResponse.status})`);
+      }
 
-      // Demo mode detection
+      const orderData = await orderResponse.json();
+      if (orderData?.error) throw new Error(orderData.error);
+
+      // 2) Demo mode
       if (orderData.demo) {
         console.log('Demo mode - simulating payment');
-        // Simulate payment delay
         setTimeout(async () => {
-          const verifyResponse = await fetch(`${API_URL}/verify-payment`, {
+          const verifyResponse = await fetch(`${API_BASE}/api/verify-payment`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               razorpay_order_id: orderData.orderId,
               razorpay_payment_id: 'pay_demo_' + Date.now(),
               razorpay_signature: 'demo_signature',
-              formData: formData,
+              formData
             }),
           });
 
-          const verifyData = await verifyResponse.json();
+          const verifyData = await verifyResponse.json().catch(() => null);
+          if (!verifyResponse.ok || verifyData?.error) {
+            throw new Error(verifyData?.error || `Verification failed (${verifyResponse.status})`);
+          }
 
           if (verifyData.success) {
             setPaymentRef(verifyData.paymentRef);
@@ -195,7 +201,7 @@ export default function PickleballRegistration() {
         return;
       }
 
-      // Real Razorpay integration (for production)
+      // 3) Real Razorpay flow
       if (window.Razorpay) {
         const options = {
           key: orderData.keyId,
@@ -205,18 +211,23 @@ export default function PickleballRegistration() {
           description: 'Tournament Registration',
           order_id: orderData.orderId,
           handler: async function (response) {
-            const verifyResponse = await fetch(`${API_URL}/verify-payment`, {
+            const verifyResponse = await fetch(`${API_BASE}/api/verify-payment`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                formData: formData,
+                formData
               }),
             });
 
-            const verifyData = await verifyResponse.json();
+            const verifyData = await verifyResponse.json().catch(() => null);
+            if (!verifyResponse.ok || verifyData?.error) {
+              alert(verifyData?.error || `Verification failed (${verifyResponse.status})`);
+              setLoading(false);
+              return;
+            }
 
             if (verifyData.success) {
               setPaymentRef(verifyData.paymentRef);
@@ -231,20 +242,14 @@ export default function PickleballRegistration() {
             email: formData.email,
             contact: formData.phone,
           },
-          theme: {
-            color: '#fbbf24',
-          },
-          modal: {
-            ondismiss: function() {
-              setLoading(false);
-            }
-          }
+          theme: { color: '#fbbf24' },
+          modal: { ondismiss: () => setLoading(false) }
         };
 
         const rzp = new window.Razorpay(options);
         rzp.open();
       } else {
-        // Fallback to demo mode if Razorpay not loaded
+        // 4) Fallback to demo if checkout.js isn't loaded
         alert('Payment gateway not loaded. Running in demo mode.');
         const mockPaymentId = 'pay_demo_' + Date.now();
         setPaymentRef(mockPaymentId);
@@ -253,7 +258,7 @@ export default function PickleballRegistration() {
       }
     } catch (error) {
       console.error('Payment Error:', error);
-      alert('Something went wrong. Please try again.');
+      alert(error?.message || 'Something went wrong. Please try again.');
       setLoading(false);
     }
   };
@@ -271,13 +276,11 @@ export default function PickleballRegistration() {
             <div className="text-6xl mb-4">🎉</div>
             <CheckCircle className="w-20 h-20 text-green-500 mx-auto" />
           </div>
-          <h1 className="text-3xl font-black text-slate-800 mb-2">
-            CONGRATULATIONS!
-          </h1>
+          <h1 className="text-3xl font-black text-slate-800 mb-2">CONGRATULATIONS!</h1>
           <p className="text-xl font-bold text-cyan-600 mb-1">{formData.name}</p>
           {partnerNames && <p className="text-lg font-bold text-cyan-600 mb-4">& {partnerNames}</p>}
           <p className="text-xl font-bold text-green-600 mb-6">You're Registered! ✓</p>
-          
+
           <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg p-4 text-left space-y-3 border-2 border-cyan-300">
             <div>
               <p className="text-sm font-bold text-slate-600">Payment Reference</p>
@@ -300,21 +303,16 @@ export default function PickleballRegistration() {
               <p className="text-3xl font-black text-green-600">₹{total}</p>
             </div>
           </div>
+
           <div className="mt-6 p-4 bg-yellow-100 rounded-lg border-2 border-yellow-400">
-            <p className="text-sm font-bold text-slate-800">
-              📧 Confirmation emails sent!
-            </p>
+            <p className="text-sm font-bold text-slate-800">📧 Confirmation emails sent!</p>
             <p className="text-xs text-slate-600 mt-2">
-              Check {formData.email}
-              {partnerNames && ' and partner emails'}
+              Check {formData.email}{partnerNames && ' and partner emails'}
             </p>
           </div>
-          <p className="text-sm text-slate-600 mt-6 font-semibold">
-            📅 Nov 11-12, 2024 | ⏰ 8:00 AM - 10:00 PM
-          </p>
-          <p className="text-xs text-slate-500 mt-2">
-            Match schedules will be shared soon!
-          </p>
+
+          <p className="text-sm text-slate-600 mt-6 font-semibold">📅 Nov 11-12, 2024 | ⏰ 8:00 AM - 10:00 PM</p>
+          <p className="text-xs text-slate-500 mt-2">Match schedules will be shared soon!</p>
         </div>
       </div>
     );
@@ -331,7 +329,7 @@ export default function PickleballRegistration() {
       <div className="relative max-w-2xl mx-auto p-4 pt-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-black text-yellow-400 mb-2 tracking-tight" style={{textShadow: '3px 3px 0px rgba(0,0,0,0.3)'}}>
+          <h1 className="text-5xl font-black text-yellow-400 mb-2 tracking-tight" style={{ textShadow: '3px 3px 0px rgba(0,0,0,0.3)' }}>
             PICKLEBALL
           </h1>
           <div className="flex items-center justify-center gap-2 text-cyan-300 text-sm font-semibold mb-4">
@@ -360,7 +358,7 @@ export default function PickleballRegistration() {
           {step === 1 && (
             <div className="space-y-5">
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Personal Information</h2>
-              
+
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <User className="w-4 h-4 mr-2" />
