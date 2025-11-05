@@ -1,19 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, CheckCircle, Mail, Phone, MapPin, User, Users } from 'lucide-react';
 
+// === Categories & Pricing (corrected) ===
 const CATEGORIES = [
-  { id: 'u12_girls', name: 'U12 Girls', events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1500 } },
-  { id: 'u12_boys', name: 'U12 Boys', events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1500 } },
-  { id: 'u19_girls', name: 'U19 Girls', events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1500 } },
-  { id: 'u19_boys', name: 'U19 Boys', events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1500 } },
-  { id: 'open_beginners_men', name: 'Open Beginners Men', events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1500 } },
-  { id: 'open_beginners_women', name: 'Open Beginners Women', events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1500 } },
-  { id: 'open_mixed', name: 'Open Mixed', events: ['Mixed'], price: { Mixed: 1500 } },
-  { id: 'open_men_adv', name: 'Open Men Advanced', events: ['Singles', 'Doubles', 'Mixed'], price: { Singles: 850, Doubles: 1500, Mixed: 1500 } },
-  { id: '35plus_men', name: '35+ Men', events: ['Singles', 'Doubles', 'Mixed'], price: { Singles: 850, Doubles: 1500, Mixed: 1500 } },
-  { id: '35plus_women', name: '35+ Women', events: ['Singles', 'Doubles', 'Mixed'], price: { Singles: 850, Doubles: 1500, Mixed: 1500 } },
-  { id: '50plus_men', name: '50+ Men', events: ['Singles', 'Doubles', 'Mixed'], price: { Singles: 850, Doubles: 1500, Mixed: 1500 } },
-  { id: '50plus_women', name: '50+ Women', events: ['Singles', 'Doubles', 'Mixed'], price: { Singles: 850, Doubles: 1500, Mixed: 1500 } }
+  // KIDS (Under 18)
+  { id: 'u12_mixed', name: 'Under 12 Mixed (Boys & Girls)', events: ['Singles', 'Doubles'], price: { Singles: 600, Doubles: 850 } },
+
+  { id: 'u14_boys',  name: 'Under 14 Boys',  events: ['Singles', 'Doubles'], price: { Singles: 600, Doubles: 850 } },
+  { id: 'u14_girls', name: 'Under 14 Girls', events: ['Singles', 'Doubles'], price: { Singles: 600, Doubles: 850 } },
+
+  { id: 'u18_boys',  name: 'Under 18 Boys',  events: ['Singles', 'Doubles'], price: { Singles: 600, Doubles: 850 } },
+  { id: 'u18_girls', name: 'Under 18 Girls', events: ['Singles', 'Doubles'], price: { Singles: 600, Doubles: 850 } },
+
+  // ADULTS
+  { id: 'beginner_men', name: 'Beginner Men (DUPR < 2.5)', events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1600 } },
+  { id: 'advanced_men', name: 'Advanced Men',               events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1600 } },
+  { id: 'women',        name: 'Women',                      events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1600 } },
+
+  // Mixed Open
+  { id: 'mixed_open', name: 'Mixed Doubles (Open)', events: ['Mixed'], price: { Mixed: 1600 } },
+
+  // Age Groups (Men)
+  { id: 'men_35_plus', name: '35+ Men', events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1600 } },
+  { id: 'men_45_plus', name: '45+ Men', events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1600 } },
+  { id: 'men_55_plus', name: '55+ Men', events: ['Singles', 'Doubles'], price: { Singles: 850, Doubles: 1600 } },
 ];
 
 export default function PickleballRegistration() {
@@ -30,6 +40,11 @@ export default function PickleballRegistration() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [paymentRef, setPaymentRef] = useState('');
+
+  // Optional: set page title
+  useEffect(() => {
+    document.title = 'Kozhikode Pickleball Tournament – Registration';
+  }, []);
 
   // Recalculate total on selection changes
   useEffect(() => {
@@ -304,11 +319,13 @@ export default function PickleballRegistration() {
             </div>
           </div>
 
-          {/* replaced the email notice with a neutral receipt note */}
+          {/* Success notice */}
           <div className="mt-6 p-4 bg-yellow-100 rounded-lg border-2 border-yellow-400">
-            <p className="text-sm font-bold text-slate-800">✅ Registration complete</p>
+            <p className="text-sm font-bold text-slate-800">
+              📧 Confirmation mails will be sent in 2–3 days with confirmed dates.
+            </p>
             <p className="text-xs text-slate-600 mt-2">
-              Save your payment reference above. We’ll share schedules here/on our official channels soon.
+              Save your payment reference above; schedules will be announced on our official channels.
             </p>
           </div>
 
@@ -330,10 +347,13 @@ export default function PickleballRegistration() {
       <div className="relative max-w-2xl mx-auto p-4 pt-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-black text-yellow-400 mb-2 tracking-tight" style={{ textShadow: '3px 3px 0px rgba(0,0,0,0.3)' }}>
-            PICKLEBALL
+          <h1
+            className="text-4xl md:text-6xl font-black text-yellow-400 mb-2 tracking-tight text-center"
+            style={{ textShadow: '3px 3px 0px rgba(0,0,0,0.3)' }}
+          >
+            KOZHIKODE PICKLEBALL TOURNAMENT
           </h1>
-        <div className="flex items-center justify-center gap-2 text-cyan-300 text-sm font-semibold mb-4">
+          <div className="flex items-center justify-center gap-2 text-cyan-300 text-sm font-semibold mb-4">
             <span>📅 Dec 5, 6 & 7, 2025</span>
             <span>•</span>
             <span>⏰ 08:00 AM - 10:00 PM</span>
@@ -452,4 +472,80 @@ export default function PickleballRegistration() {
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => handleEventToggle(category.id, eventType)}
-                                  className="w-5 h-5 text-yellow-500 rounded focus:ring-ye
+                                  className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
+                                />
+                                <span className="ml-3 text-gray-800 font-semibold">
+                                  {eventType}
+                                  {requiresPartner && <Users className="inline w-4 h-4 ml-1 text-cyan-600" />}
+                                </span>
+                              </div>
+                              <span className="font-black text-cyan-700 text-lg">
+                                ₹{category.price[eventType]}
+                              </span>
+                            </label>
+
+                            {isSelected && requiresPartner && (
+                              <div className="mt-3 ml-8 space-y-2 p-3 bg-yellow-50 rounded border-2 border-yellow-300">
+                                <p className="text-xs font-bold text-slate-700 mb-2">⚡ Partner Details Required</p>
+                                <input
+                                  type="text"
+                                  placeholder="Partner Name *"
+                                  value={formData.partners[eventKey]?.name || ''}
+                                  onChange={(e) => handlePartnerChange(eventKey, 'name', e.target.value)}
+                                  className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                                />
+                                <input
+                                  type="tel"
+                                  placeholder="Partner Phone *"
+                                  value={formData.partners[eventKey]?.phone || ''}
+                                  onChange={(e) => handlePartnerChange(eventKey, 'phone', e.target.value)}
+                                  className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                                />
+                                <input
+                                  type="email"
+                                  placeholder="Partner Email *"
+                                  value={formData.partners[eventKey]?.email || ''}
+                                  onChange={(e) => handlePartnerChange(eventKey, 'email', e.target.value)}
+                                  className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total */}
+              <div className="bg-gradient-to-r from-yellow-400 to-yellow-300 border-4 border-yellow-500 rounded-lg p-4 shadow-xl">
+                <div className="flex justify-between items-center">
+                  <span className="text-xl font-black text-slate-900">TOTAL AMOUNT</span>
+                  <span className="text-4xl font-black text-slate-900">₹{total}</span>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(1)}
+                  className="flex-1 bg-gray-600 text-white py-4 rounded-lg font-bold hover:bg-gray-700 transition-colors"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={loading || formData.selectedEvents.length === 0}
+                  className="flex-1 bg-yellow-400 text-slate-900 py-4 rounded-lg font-bold hover:bg-yellow-300 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-lg text-lg"
+                >
+                  {loading ? 'Processing...' : 'Proceed to Payment 💳'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
