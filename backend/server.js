@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const Razorpay = require('razorpay');
-const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
 require('dotenv').config();
 
@@ -17,16 +16,6 @@ app.use(express.urlencoded({ extended: true }));
 const razorpay = process.env.RAZORPAY_KEY_ID ? new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
-}) : null;
-
-// Brevo SMTP Configuration
-const emailTransporter = process.env.BREVO_SMTP_HOST ? nodemailer.createTransport({
-  host: process.env.BREVO_SMTP_HOST,
-  port: process.env.BREVO_SMTP_PORT,
-  auth: {
-    user: process.env.BREVO_SMTP_USER,
-    pass: process.env.BREVO_SMTP_PASS,
-  },
 }) : null;
 
 // Google Sheets Setup
@@ -119,84 +108,6 @@ async function writeToSheet(data) {
   }
 }
 
-// Send Email
-async function sendEmail(to, subject, html) {
-  if (!emailTransporter) {
-    console.log('⚠️  Email not configured - skipping send to:', to);
-    return;
-  }
-
-  try {
-    await emailTransporter.sendMail({
-      from: `"${process.env.BREVO_FROM_NAME}" <${process.env.BREVO_FROM_EMAIL}>`,
-      to,
-      subject,
-      html,
-    });
-    console.log(`✅ Email sent to ${to}`);
-  } catch (error) {
-    console.error(`❌ Email Error for ${to}:`, error.message);
-  }
-}
-
-// Email Template
-function generateEmailTemplate(name, paymentRef, events, partnerName = null) {
-  const eventsList = events.map(e => {
-    const parts = e.split('_');
-    const eventType = parts[parts.length - 1];
-    const catId = parts.slice(0, -1).join('_');
-    return `${catId.replace(/_/g, ' ').toUpperCase()} - ${eventType}`;
-  }).join('<br>');
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-        .info-box { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #fbbf24; border-radius: 4px; }
-        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>🏓 Registration Confirmed!</h1>
-        </div>
-        <div class="content">
-          <p>Hi <strong>${name}</strong>,</p>
-          <p>Thanks for registering for our Pickleball Tournament! Your booking is confirmed.</p>
-          
-          <div class="info-box">
-            <p><strong>Payment Reference:</strong> ${paymentRef}</p>
-            <p><strong>Selected Events:</strong><br>${eventsList}</p>
-            ${partnerName ? `<p><strong>Partner:</strong> ${partnerName}</p>` : ''}
-          </div>
-
-          <div class="info-box">
-            <p><strong>📅 Tournament Schedule:</strong></p>
-            <p>November 11 & 12, 2024</p>
-            <p>⏰ 08:00 AM - 10:00 PM</p>
-          </div>
-
-          <p>Venue/date details and match schedules will be shared shortly.</p>
-          <p>If you have questions, reply to this email.</p>
-          
-          <p style="margin-top: 30px;"><strong>See you on court! 🏓</strong></p>
-          <p>— Tournament Team</p>
-        </div>
-        <div class="footer">
-          <p>This is an automated confirmation email</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-}
-
 // Routes
 
 // Health Check
@@ -206,7 +117,6 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     services: {
       razorpay: !!razorpay,
-      email: !!emailTransporter,
       sheets: !!sheets
     }
   });
@@ -288,7 +198,7 @@ app.post('/api/verify-payment', async (req, res) => {
     console.log('FormData received:', formData ? 'Yes' : 'No');
 
     // Demo mode
-    if (!razorpay || razorpay_order_id.includes('demo')) {
+    if (!razorpay || (razorpay_order_id || '').includes('demo')) {
       console.log('⚠️  Demo mode - simulating successful payment');
       
       const mockPaymentId = 'pay_demo_' + Date.now();
@@ -302,32 +212,6 @@ app.post('/api/verify-payment', async (req, res) => {
         await writeToSheet(registrationData);
       } catch (e) {
         console.log('Sheets write failed (expected in demo):', e.message);
-      }
-
-      try {
-        const participantEmail = generateEmailTemplate(
-          formData.name,
-          mockPaymentId,
-          formData.selectedEvents
-        );
-        await sendEmail(formData.email, "Your Pickleball Registration is Confirmed - Thank You!", participantEmail);
-
-        const partnerEmails = new Set();
-        for (const event of formData.selectedEvents) {
-          const partner = formData.partners[event];
-          if (partner && partner.email && !partnerEmails.has(partner.email)) {
-            partnerEmails.add(partner.email);
-            const partnerEmailContent = generateEmailTemplate(
-              partner.name,
-              mockPaymentId,
-              formData.selectedEvents,
-              formData.name
-            );
-            await sendEmail(partner.email, "You've been registered as a partner - Pickleball Tournament", partnerEmailContent);
-          }
-        }
-      } catch (e) {
-        console.log('Email send failed (expected in demo):', e.message);
       }
 
       console.log('✅ Demo payment verification complete');
@@ -371,31 +255,6 @@ app.post('/api/verify-payment', async (req, res) => {
 
     console.log('Writing to Google Sheets...');
     await writeToSheet(registrationData);
-
-    console.log('Sending participant email...');
-    const participantEmail = generateEmailTemplate(
-      formData.name,
-      razorpay_payment_id,
-      formData.selectedEvents
-    );
-    await sendEmail(formData.email, "Your Pickleball Registration is Confirmed - Thank You!", participantEmail);
-
-    console.log('Checking for partner emails...');
-    const partnerEmails = new Set();
-    for (const event of formData.selectedEvents) {
-      const partner = formData.partners[event];
-      if (partner && partner.email && !partnerEmails.has(partner.email)) {
-        partnerEmails.add(partner.email);
-        console.log('Sending partner email to:', partner.email);
-        const partnerEmailContent = generateEmailTemplate(
-          partner.name,
-          razorpay_payment_id,
-          formData.selectedEvents,
-          formData.name
-        );
-        await sendEmail(partner.email, "You've been registered as a partner - Pickleball Tournament", partnerEmailContent);
-      }
-    }
 
     console.log('✅ Payment verification successful');
     console.log('=== PAYMENT VERIFICATION END ===');
@@ -471,7 +330,7 @@ app.get('/admin/registrations', adminAuth, async (req, res) => {
     if (search) {
       const searchLower = search.toLowerCase();
       filteredData = data.filter(row =>
-        row.some(cell => cell.toLowerCase().includes(searchLower))
+        row.some(cell => (cell || '').toLowerCase().includes(searchLower))
       );
     }
 
@@ -531,7 +390,7 @@ app.get('/admin/stats', adminAuth, async (req, res) => {
 
     const categoryStats = {};
     data.forEach(row => {
-      const events = row[5]?.split(', ') || [];
+      const events = (row[5] || '').split(', ') || [];
       events.forEach(event => {
         const parts = event.split('_');
         const catId = parts.slice(0, -1).join('_');
@@ -559,6 +418,5 @@ app.listen(PORT, () => {
   console.log('');
   console.log('Services Status:');
   console.log(`  Razorpay: ${razorpay ? '✅ Configured' : '⚠️  Demo mode'}`);
-  console.log(`  Email: ${emailTransporter ? '✅ Configured' : '⚠️  Demo mode'}`);
   console.log(`  Google Sheets: ${sheets ? '✅ Configured' : '⚠️  Demo mode'}`);
 });
