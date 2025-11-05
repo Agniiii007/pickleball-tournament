@@ -279,7 +279,7 @@ export default function PickleballRegistration() {
           <h1 className="text-3xl font-black text-slate-800 mb-2">CONGRATULATIONS!</h1>
           <p className="text-xl font-bold text-cyan-600 mb-1">{formData.name}</p>
           {partnerNames && <p className="text-lg font-bold text-cyan-600 mb-4">& {partnerNames}</p>}
-          <p className="text-xl font-bold text-green-600 mb-6">You're Registered! ✓</p>
+          <p className="text-xl font-bold text-green-600 mb-6">Your registration is confirmed. ✓</p>
 
           <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg p-4 text-left space-y-3 border-2 border-cyan-300">
             <div>
@@ -304,14 +304,15 @@ export default function PickleballRegistration() {
             </div>
           </div>
 
+          {/* replaced the email notice with a neutral receipt note */}
           <div className="mt-6 p-4 bg-yellow-100 rounded-lg border-2 border-yellow-400">
-            <p className="text-sm font-bold text-slate-800">📧 Confirmation emails sent!</p>
+            <p className="text-sm font-bold text-slate-800">✅ Registration complete</p>
             <p className="text-xs text-slate-600 mt-2">
-              Check {formData.email}{partnerNames && ' and partner emails'}
+              Save your payment reference above. We’ll share schedules here/on our official channels soon.
             </p>
           </div>
 
-          <p className="text-sm text-slate-600 mt-6 font-semibold">📅 Nov 11-12, 2024 | ⏰ 8:00 AM - 10:00 PM</p>
+          <p className="text-sm text-slate-600 mt-6 font-semibold">📅 Dec 5–7, 2025 | ⏰ 8:00 AM - 10:00 PM</p>
           <p className="text-xs text-slate-500 mt-2">Match schedules will be shared soon!</p>
         </div>
       </div>
@@ -332,7 +333,7 @@ export default function PickleballRegistration() {
           <h1 className="text-5xl font-black text-yellow-400 mb-2 tracking-tight" style={{ textShadow: '3px 3px 0px rgba(0,0,0,0.3)' }}>
             PICKLEBALL
           </h1>
-          <div className="flex items-center justify-center gap-2 text-cyan-300 text-sm font-semibold mb-4">
+        <div className="flex items-center justify-center gap-2 text-cyan-300 text-sm font-semibold mb-4">
             <span>📅 Dec 5, 6 & 7, 2025</span>
             <span>•</span>
             <span>⏰ 08:00 AM - 10:00 PM</span>
@@ -451,80 +452,4 @@ export default function PickleballRegistration() {
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => handleEventToggle(category.id, eventType)}
-                                  className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500"
-                                />
-                                <span className="ml-3 text-gray-800 font-semibold">
-                                  {eventType}
-                                  {requiresPartner && <Users className="inline w-4 h-4 ml-1 text-cyan-600" />}
-                                </span>
-                              </div>
-                              <span className="font-black text-cyan-700 text-lg">
-                                ₹{category.price[eventType]}
-                              </span>
-                            </label>
-
-                            {isSelected && requiresPartner && (
-                              <div className="mt-3 ml-8 space-y-2 p-3 bg-yellow-50 rounded border-2 border-yellow-300">
-                                <p className="text-xs font-bold text-slate-700 mb-2">⚡ Partner Details Required</p>
-                                <input
-                                  type="text"
-                                  placeholder="Partner Name *"
-                                  value={formData.partners[eventKey]?.name || ''}
-                                  onChange={(e) => handlePartnerChange(eventKey, 'name', e.target.value)}
-                                  className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                                />
-                                <input
-                                  type="tel"
-                                  placeholder="Partner Phone *"
-                                  value={formData.partners[eventKey]?.phone || ''}
-                                  onChange={(e) => handlePartnerChange(eventKey, 'phone', e.target.value)}
-                                  className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                                />
-                                <input
-                                  type="email"
-                                  placeholder="Partner Email *"
-                                  value={formData.partners[eventKey]?.email || ''}
-                                  onChange={(e) => handlePartnerChange(eventKey, 'email', e.target.value)}
-                                  className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Total */}
-              <div className="bg-gradient-to-r from-yellow-400 to-yellow-300 border-4 border-yellow-500 rounded-lg p-4 shadow-xl">
-                <div className="flex justify-between items-center">
-                  <span className="text-xl font-black text-slate-900">TOTAL AMOUNT</span>
-                  <span className="text-4xl font-black text-slate-900">₹{total}</span>
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setStep(1)}
-                  className="flex-1 bg-gray-600 text-white py-4 rounded-lg font-bold hover:bg-gray-700 transition-colors"
-                >
-                  ← Back
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading || formData.selectedEvents.length === 0}
-                  className="flex-1 bg-yellow-400 text-slate-900 py-4 rounded-lg font-bold hover:bg-yellow-300 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-lg text-lg"
-                >
-                  {loading ? 'Processing...' : 'Proceed to Payment 💳'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+                                  className="w-5 h-5 text-yellow-500 rounded focus:ring-ye
