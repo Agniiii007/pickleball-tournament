@@ -12,11 +12,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Razorpay Instance (will use dummy values for local testing)
-const razorpay = process.env.RAZORPAY_KEY_ID ? new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-}) : null;
+// Razorpay Instance (will use demo for local/testing when creds absent)
+const razorpay = process.env.RAZORPAY_KEY_ID
+  ? new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    })
+  : null;
 
 // Google Sheets Setup
 let sheets = null;
@@ -32,26 +34,41 @@ if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
   }
 }
 
-// Pricing Configuration
+/**
+ * PRICING (kept in sync with frontend)
+ * - U12 Mixed: Singles 600, Doubles 850
+ * - U14 Boys/Girls: Singles 600, Doubles 850
+ * - U18 Boys/Girls: Singles 600, Doubles 850
+ * - Adults Singles 850, Doubles 1600, Mixed 1600
+ */
 const PRICING = {
-  u12_girls: { Singles: 850, Doubles: 1500 },
-  u12_boys: { Singles: 850, Doubles: 1500 },
-  u19_girls: { Singles: 850, Doubles: 1500 },
-  u19_boys: { Singles: 850, Doubles: 1500 },
-  open_beginners_men: { Singles: 850, Doubles: 1500 },
-  open_beginners_women: { Singles: 850, Doubles: 1500 },
-  open_mixed: { Mixed: 1500 },
-  open_men_adv: { Singles: 850, Doubles: 1500, Mixed: 1500 },
-  '35plus_men': { Singles: 850, Doubles: 1500, Mixed: 1500 },
-  '35plus_women': { Singles: 850, Doubles: 1500, Mixed: 1500 },
-  '50plus_men': { Singles: 850, Doubles: 1500, Mixed: 1500 },
-  '50plus_women': { Singles: 850, Doubles: 1500, Mixed: 1500 },
+  // KIDS (Under 18)
+  u12_mixed: { Singles: 600, Doubles: 850 },
+
+  u14_boys:  { Singles: 600, Doubles: 850 },
+  u14_girls: { Singles: 600, Doubles: 850 },
+
+  u18_boys:  { Singles: 600, Doubles: 850 },
+  u18_girls: { Singles: 600, Doubles: 850 },
+
+  // ADULTS
+  beginner_men: { Singles: 850, Doubles: 1600 },
+  advanced_men: { Singles: 850, Doubles: 1600 },
+  women:        { Singles: 850, Doubles: 1600 },
+
+  // Mixed Open
+  mixed_open: { Mixed: 1600 },
+
+  // Age Groups (Men)
+  men_35_plus: { Singles: 850, Doubles: 1600 },
+  men_45_plus: { Singles: 850, Doubles: 1600 },
+  men_55_plus: { Singles: 850, Doubles: 1600 },
 };
 
 // Calculate Total Server-Side
 function calculateTotal(selectedEvents) {
   let total = 0;
-  selectedEvents.forEach(event => {
+  selectedEvents.forEach((event) => {
     const parts = event.split('_');
     const eventTypeFromKey = parts[parts.length - 1];
     const catIdFromKey = parts.slice(0, -1).join('_');
@@ -72,31 +89,33 @@ async function writeToSheet(data) {
   try {
     const timestamp = new Date().toISOString();
     const eventsString = data.selectedEvents.join(', ');
-    
+
     const partners = data.selectedEvents
-      .map(e => {
-        const partner = data.partners[e];
+      .map((e) => {
+        const partner = data.partners?.[e];
         return partner ? `${partner.name} (${partner.phone}, ${partner.email})` : '';
       })
-      .filter(p => p)
+      .filter((p) => p)
       .join('; ');
 
-    const values = [[
-      timestamp,
-      data.name,
-      data.email,
-      data.phone,
-      data.address,
-      eventsString,
-      partners,
-      data.total,
-      data.paymentRef,
-      'Completed'
-    ]];
+    const values = [
+      [
+        timestamp,
+        data.name,
+        data.email,
+        data.phone,
+        data.address,
+        eventsString,
+        partners,
+        data.total,
+        data.paymentRef,
+        'Completed',
+      ],
+    ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Sheet1!A:J',
+      range: 'Sheet1!A:J', // keep same as before; adjust if your sheet/tab name differs
       valueInputOption: 'USER_ENTERED',
       resource: { values },
     });
@@ -108,17 +127,17 @@ async function writeToSheet(data) {
   }
 }
 
-// Routes
+// ===================== Routes =====================
 
 // Health Check
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     services: {
       razorpay: !!razorpay,
-      sheets: !!sheets
-    }
+      sheets: !!sheets,
+    },
   });
 });
 
@@ -126,7 +145,7 @@ app.get('/api/health', (req, res) => {
 app.post('/api/register', async (req, res) => {
   try {
     console.log('=== ORDER CREATION START ===');
-    const { name, email, phone, address, selectedEvents, partners } = req.body;
+    const { name, email, phone, address, selectedEvents } = req.body;
 
     // Validation
     if (!name || !email || !phone || !address || !selectedEvents || selectedEvents.length === 0) {
@@ -139,7 +158,7 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Maximum 3 events allowed' });
     }
 
-    // Calculate total server-side
+    // Calculate total
     const calculatedTotal = calculateTotal(selectedEvents);
     console.log('Calculated total:', calculatedTotal);
 
@@ -151,7 +170,7 @@ app.post('/api/register', async (req, res) => {
         amount: calculatedTotal,
         currency: 'INR',
         keyId: 'rzp_test_demo',
-        demo: true
+        demo: true,
       });
     }
 
@@ -183,24 +202,16 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/verify-payment', async (req, res) => {
   try {
     console.log('=== PAYMENT VERIFICATION START ===');
-    console.log('Request body keys:', Object.keys(req.body));
-    
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      formData,
-    } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, formData } = req.body;
 
     console.log('Order ID:', razorpay_order_id);
-    console.log('Payment ID:', razorpay_payment_id);
+    console.log('Payment ID:', razorpay_payment_id || '(demo)');
     console.log('Signature received:', razorpay_signature ? 'Yes' : 'No');
-    console.log('FormData received:', formData ? 'Yes' : 'No');
 
     // Demo mode
-    if (!razorpay || (razorpay_order_id || '').includes('demo')) {
+    if (!razorpay || (razorpay_order_id && String(razorpay_order_id).includes('demo'))) {
       console.log('⚠️  Demo mode - simulating successful payment');
-      
+
       const mockPaymentId = 'pay_demo_' + Date.now();
       const registrationData = {
         ...formData,
@@ -211,7 +222,7 @@ app.post('/api/verify-payment', async (req, res) => {
       try {
         await writeToSheet(registrationData);
       } catch (e) {
-        console.log('Sheets write failed (expected in demo):', e.message);
+        console.log('Sheets write failed (demo):', e.message);
       }
 
       console.log('✅ Demo payment verification complete');
@@ -221,21 +232,21 @@ app.post('/api/verify-payment', async (req, res) => {
         success: true,
         registrationId: mockPaymentId,
         paymentRef: mockPaymentId,
-        demo: true
+        demo: true,
       });
     }
 
     // Real payment verification
     console.log('Verifying real Razorpay payment...');
-    console.log('Using Key Secret:', process.env.RAZORPAY_KEY_SECRET ? 'Present' : 'Missing');
-    
+    if (!process.env.RAZORPAY_KEY_SECRET) {
+      return res.status(500).json({ error: 'Missing Razorpay key secret on server' });
+    }
+
     const generatedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 
-    console.log('Generated signature:', generatedSignature);
-    console.log('Received signature:', razorpay_signature);
     console.log('Signatures match:', generatedSignature === razorpay_signature);
 
     if (generatedSignature !== razorpay_signature) {
@@ -246,7 +257,7 @@ app.post('/api/verify-payment', async (req, res) => {
     console.log('✅ Signature verification SUCCESS');
 
     const calculatedTotal = calculateTotal(formData.selectedEvents);
-    
+
     const registrationData = {
       ...formData,
       total: calculatedTotal,
@@ -266,19 +277,18 @@ app.post('/api/verify-payment', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Payment Verification Error:', error);
-    console.error('Error stack:', error.stack);
     res.status(500).json({ error: 'Payment verification failed', details: error.message });
   }
 });
 
-// Razorpay Webhook (Fallback)
+// Razorpay Webhook (optional fallback)
 app.post('/webhooks/razorpay', async (req, res) => {
   try {
     const signature = req.headers['x-razorpay-signature'];
     const body = JSON.stringify(req.body);
 
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET)
+      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET || '')
       .update(body)
       .digest('hex');
 
@@ -287,7 +297,6 @@ app.post('/webhooks/razorpay', async (req, res) => {
     }
 
     const event = req.body.event;
-
     if (event === 'payment.captured') {
       console.log('✅ Webhook received: payment.captured');
     }
@@ -299,7 +308,7 @@ app.post('/webhooks/razorpay', async (req, res) => {
   }
 });
 
-// Admin Routes (Protected)
+// =============== Admin Routes (Protected) ===============
 const adminAuth = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (token !== process.env.ADMIN_TOKEN) {
@@ -319,23 +328,21 @@ app.get('/admin/registrations', adminAuth, async (req, res) => {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Registrations!A:J',
+      range: 'Registrations!A:J', // change if your tab differs
     });
 
     const rows = response.data.values || [];
-    const headers = rows[0];
+    const headers = rows[0] || [];
     const data = rows.slice(1);
 
     let filteredData = data;
     if (search) {
       const searchLower = search.toLowerCase();
-      filteredData = data.filter(row =>
-        row.some(cell => (cell || '').toLowerCase().includes(searchLower))
-      );
+      filteredData = data.filter((row) => row.some((cell) => String(cell).toLowerCase().includes(searchLower)));
     }
 
     if (exportCsv === 'true') {
-      const csv = [headers, ...filteredData].map(row => row.join(',')).join('\n');
+      const csv = [headers, ...filteredData].map((row) => row.join(',')).join('\n');
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename=registrations.csv');
       return res.send(csv);
@@ -352,17 +359,16 @@ app.get('/admin/registrations', adminAuth, async (req, res) => {
   }
 });
 
-// Update Pricing
+// Update Pricing (in-memory; restart resets)
 app.patch('/admin/pricing', adminAuth, async (req, res) => {
   try {
     const { category, eventType, price } = req.body;
 
-    if (!PRICING[category] || !PRICING[category][eventType]) {
+    if (!PRICING[category] || PRICING[category][eventType] == null) {
       return res.status(400).json({ error: 'Invalid category or event type' });
     }
 
-    PRICING[category][eventType] = price;
-
+    PRICING[category][eventType] = Number(price);
     res.json({ success: true, message: 'Pricing updated' });
   } catch (error) {
     console.error('Update Pricing Error:', error);
@@ -389,9 +395,9 @@ app.get('/admin/stats', adminAuth, async (req, res) => {
     const totalRevenue = data.reduce((sum, row) => sum + (parseFloat(row[7]) || 0), 0);
 
     const categoryStats = {};
-    data.forEach(row => {
-      const events = (row[5] || '').split(', ') || [];
-      events.forEach(event => {
+    data.forEach((row) => {
+      const events = row[5]?.split(', ') || [];
+      events.forEach((event) => {
         const parts = event.split('_');
         const catId = parts.slice(0, -1).join('_');
         categoryStats[catId] = (categoryStats[catId] || 0) + 1;
